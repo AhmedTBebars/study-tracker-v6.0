@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowUnusedLabels": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["./shared/*"],
+      "@/server/*": ["./server/*"],
+      "@/client/*": ["./client/*"]
+    }
+  },
+  "include": [
+    "server",
+    "shared",
+    "client"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
