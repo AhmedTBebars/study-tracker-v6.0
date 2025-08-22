@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Timer</title>
+    <style>
+        /* Modern styling for the PiP window to match the app's aesthetic */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: #18181b; color: white; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        .container { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; position: relative; }
+        canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        .controls { position: absolute; bottom: 10px; display: flex; gap: 10px; opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(5px); background: rgba(0,0,0,0.2); padding: 5px; border-radius: 20px; }
+        .container:hover .controls { opacity: 1; }
+        button { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        svg { width: 18px; height: 18px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="timerCanvas"></canvas>
+        <div class="controls">
+            <button id="togglePauseBtn" title="Play/Pause">
+                <!-- SVG for Play/Pause will be set by JS -->
+            </button>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('timerCanvas');
+        const ctx = canvas.getContext('2d');
+        const togglePauseBtn = document.getElementById('togglePauseBtn');
+
+        const playIcon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>`;
+        const pauseIcon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>`;
+
+        let state = {
+            timeRemaining: 0,
+            totalDuration: 1,
+            isActive: false,
+            focusTimerColor: '#f97316', // Default to orange
+            sessionType: 'focus'
+        };
+
+        const formatTime = (seconds) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return { mins: String(mins).padStart(2, '0'), secs: String(secs).padStart(2, '0') };
+        };
+
+        const drawTimer = () => {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            const radius = Math.min(width, height) / 2 - 25; // More padding
+            const progress = state.totalDuration > 0 ? state.timeRemaining / state.totalDuration : 1;
+
+            ctx.clearRect(0, 0, width, height);
+            
+            // --- NEW DESIGN: Replicating the provided image ---
+            
+            // 1. Background circle (subtle)
+            ctx.beginPath();
+            ctx.arc(width / 2, height / 2, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // 2. Progress arc (vibrant and thick)
+            if (state.isActive) {
+                ctx.beginPath();
+                ctx.arc(width / 2, height / 2, radius, -0.5 * Math.PI, -0.5 * Math.PI + (1 - progress) * 2 * Math.PI, false);
+                ctx.strokeStyle = state.focusTimerColor;
+                ctx.lineWidth = 12;
+                ctx.lineCap = 'round'; // Rounded ends like the image
+                ctx.stroke();
+            }
+
+            // 3. Time text (formatted like "04 min 06 sec")
+            const { mins, secs } = formatTime(state.timeRemaining);
+            const fontSize = radius * 0.45;
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Draw minutes
+            ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+            ctx.fillText(mins, width / 2 - fontSize * 0.9, height / 2 - fontSize * 0.2);
+            
+            // Draw "min" text
+            ctx.font = `400 ${fontSize * 0.4}px Inter, sans-serif`;
+            ctx.fillText('min', width / 2, height / 2 - fontSize * 0.2);
+
+            // Draw seconds
+            ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+            ctx.fillText(secs, width / 2 + fontSize * 0.9, height / 2 - fontSize * 0.2);
+
+            // Draw "sec" text
+            ctx.font = `400 ${fontSize * 0.4}px Inter, sans-serif`;
+            ctx.fillText('sec', width / 2 + fontSize * 1.8, height / 2 - fontSize * 0.2);
+
+
+            // 4. Session type text ("FOCUS" or "BREAK")
+            ctx.fillStyle = state.focusTimerColor;
+            ctx.font = `700 ${fontSize * 0.35}px Inter, sans-serif`;
+            ctx.fillText(state.sessionType.toUpperCase(), width / 2, height / 2 + fontSize * 0.5);
+        };
+
+        // Listen for updates from the main app
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'TIMER_UPDATE') {
+                state = { ...state, ...event.data.payload };
+                drawTimer();
+                togglePauseBtn.innerHTML = state.isActive ? pauseIcon : playIcon;
+            }
+        });
+
+        // Send control messages to the main app
+        togglePauseBtn.addEventListener('click', () => {
+            window.opener.postMessage({ type: 'TIMER_TOGGLE_PAUSE' }, '*');
+        });
+        
+        // Initial draw
+        drawTimer();
+        window.addEventListener('resize', drawTimer);
+    </script>
+</body>
+</html>
